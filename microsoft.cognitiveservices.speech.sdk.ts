@@ -12,5 +12,5 @@ export * from "./src/sdk/Exports";
 export * from "./src/common/Exports";
 export * from "./src/common-speech/Exports";
 export * from "./src/common-browser/Exports";
-export * from './src/sdk/Audio/AudioConfig';
-export * from './src/sdk/Audio/AudioStreamFormat';
+export * from "./src/sdk/Audio/AudioConfig";
+export * from "./src/sdk/Audio/AudioStreamFormat";
