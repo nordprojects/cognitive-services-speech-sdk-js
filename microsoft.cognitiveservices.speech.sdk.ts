@@ -9,8 +9,45 @@ Events.instance.attachConsoleListener(new ConsoleLoggingListener());
 
 // Speech SDK API
 export * from "./src/sdk/Exports";
-export {RiffPcmEncoder, Stream} from "./src/common/Exports";
-// export * from "./src/common.speech/Exports";
-export {IRecorder, } from "./src/common.browser/Exports";
-export { AudioConfigImpl } from "./src/sdk/Audio/AudioConfig";
-// export * from "./src/sdk/Audio/AudioStreamFormat";
+
+// export other symbols we use
+export {
+    AudioSourceErrorEvent,
+    AudioSourceEvent,
+    AudioSourceInitializingEvent,
+    AudioSourceOffEvent,
+    AudioSourceReadyEvent,
+    AudioStreamNodeAttachedEvent,
+    AudioStreamNodeAttachingEvent,
+    AudioStreamNodeDetachedEvent,
+    AudioStreamNodeErrorEvent,
+    ChunkedArrayBufferStream,
+    createNoDashGuid,
+    Deferred,
+    Events,
+    EventSource,
+    IAudioSource,
+    IAudioStreamNode,
+    IStringDictionary,
+    RiffPcmEncoder,
+    Stream,
+} from "./src/common/Exports";
+
+export {
+    connectivity,
+    ISpeechConfigAudioDevice,
+    type
+} from "./src/common.speech/Exports";
+
+export {
+    IRecorder,
+} from "./src/common.browser/Exports";
+
+export {
+    AudioConfigImpl
+} from "./src/sdk/Audio/AudioConfig";
+
+export {
+    AudioStreamFormat,
+    AudioStreamFormatImpl,
+} from "./src/sdk/Audio/AudioStreamFormat";
