@@ -48,6 +48,5 @@ export {
 } from "./src/sdk/Audio/AudioConfig";
 
 export {
-    AudioStreamFormat,
     AudioStreamFormatImpl,
 } from "./src/sdk/Audio/AudioStreamFormat";
