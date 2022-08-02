@@ -9,8 +9,8 @@ Events.instance.attachConsoleListener(new ConsoleLoggingListener());
 
 // Speech SDK API
 export * from "./src/sdk/Exports";
-export * from "./src/common/Exports";
-export * from "./src/common-speech/Exports";
-export * from "./src/common-browser/Exports";
-export * from "./src/sdk/Audio/AudioConfig";
-export * from "./src/sdk/Audio/AudioStreamFormat";
+export {RiffPcmEncoder, Stream} from "./src/common/Exports";
+// export * from "./src/common.speech/Exports";
+export {IRecorder, } from "./src/common.browser/Exports";
+export { AudioConfigImpl } from "./src/sdk/Audio/AudioConfig";
+// export * from "./src/sdk/Audio/AudioStreamFormat";
