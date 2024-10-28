@@ -12,9 +12,9 @@ import {
     IConnection,
     IStringDictionary,
     IWebsocketMessageFormatter,
-} from "../common/Exports";
-import { ProxyInfo } from "./ProxyInfo";
-import { WebsocketMessageAdapter } from "./WebsocketMessageAdapter";
+} from "../common/Exports.js";
+import { ProxyInfo } from "./ProxyInfo.js";
+import { WebsocketMessageAdapter } from "./WebsocketMessageAdapter.js";
 
 export class WebsocketConnection implements IConnection {
 
@@ -50,8 +50,16 @@ export class WebsocketConnection implements IConnection {
             for (const paramName in queryParameters) {
                 if (paramName) {
                     queryParams += ((i === 0) && (uri.indexOf("?") === -1)) ? "?" : "&";
-                    const val = encodeURIComponent(queryParameters[paramName]);
-                    queryParams += `${paramName}=${val}`;
+
+                    const key = encodeURIComponent(paramName);
+                    queryParams += key;
+
+                    let val = queryParameters[paramName];
+                    if (val) {
+                        val = encodeURIComponent(val);
+                        queryParams += `=${val}`;
+                    }
+
                     i++;
                 }
             }
@@ -94,6 +102,10 @@ export class WebsocketConnection implements IConnection {
 
     public get id(): string {
         return this.privId;
+    }
+
+    public get uri(): string {
+        return this.privUri;
     }
 
     public state(): ConnectionState {

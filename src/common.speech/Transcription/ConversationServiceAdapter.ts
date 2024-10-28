@@ -8,24 +8,25 @@ import {
     IAudioSource,
     IConnection,
     MessageType,
-} from "../../common/Exports";
+} from "../../common/Exports.js";
 import {
     CancellationErrorCode,
     CancellationReason,
     ConversationExpirationEventArgs,
     ConversationTranslationCanceledEventArgs,
     ConversationTranslationResult,
+    ResultReason,
     Translations
-} from "../../sdk/Exports";
+} from "../../sdk/Exports.js";
 import {
     CognitiveTokenAuthentication,
     IAuthentication,
     IConnectionFactory,
     RecognizerConfig,
     ServiceRecognizerBase
-} from "../Exports";
-import { ConversationConnectionMessage } from "./ConversationConnectionMessage";
-import { ConversationRequestSession } from "./ConversationRequestSession";
+} from "../Exports.js";
+import { ConversationConnectionMessage } from "./ConversationConnectionMessage.js";
+import { ConversationRequestSession } from "./ConversationRequestSession.js";
 import {
     ConversationReceivedTranslationEventArgs,
     LockRoomEventArgs,
@@ -33,13 +34,13 @@ import {
     ParticipantAttributeEventArgs,
     ParticipantEventArgs,
     ParticipantsListEventArgs
-} from "./ConversationTranslatorEventArgs";
+} from "./ConversationTranslatorEventArgs.js";
 import {
     ConversationTranslatorCommandTypes,
     ConversationTranslatorMessageTypes,
     IInternalParticipant
-} from "./ConversationTranslatorInterfaces";
-import { ConversationTranslatorRecognizer } from "./ConversationTranslatorRecognizer";
+} from "./ConversationTranslatorInterfaces.js";
+import { ConversationTranslatorRecognizer } from "./ConversationTranslatorRecognizer.js";
 import {
     CommandResponsePayload,
     IParticipantPayloadResponse,
@@ -49,7 +50,7 @@ import {
     ParticipantsListPayloadResponse,
     SpeechResponsePayload,
     TextResponsePayload
-} from "./ServiceMessages/Exports";
+} from "./ServiceMessages/Exports.js";
 
 /**
  * The service adapter handles sending and receiving messages to the Conversation Translator websocket.
@@ -159,11 +160,6 @@ export class ConversationServiceAdapter extends ServiceRecognizerBase {
         }
     }
 
-    protected noOp(): Promise<void> {
-        // operation not supported
-        return;
-    }
-
     /**
      * Establishes a websocket connection to the end point.
      */
@@ -196,10 +192,11 @@ export class ConversationServiceAdapter extends ServiceRecognizerBase {
             }
 
             const sessionId: string = this.privConversationRequestSession.sessionId;
+            const conversationMessageType: string = message.conversationMessageType.toLowerCase();
             let sendFinal: boolean = false;
 
             try {
-                switch (message.conversationMessageType.toLowerCase()) {
+                switch (conversationMessageType) {
                     case "info":
                     case "participant_command":
                     case "command":
@@ -344,7 +341,7 @@ export class ConversationServiceAdapter extends ServiceRecognizerBase {
                                     this.privConversationServiceConnector.participantUpdateCommandReceived(this.privConversationServiceConnector,
                                         new ParticipantAttributeEventArgs(commandPayload.participantId,
                                             ConversationTranslatorCommandTypes.changeNickname,
-                                            commandPayload.nickname, sessionId));
+                                            commandPayload.value, sessionId));
                                 }
 
                                 break;
@@ -415,6 +412,7 @@ export class ConversationServiceAdapter extends ServiceRecognizerBase {
                                         return Promise.resolve(authorizationToken);
                                     });
                                 this.authentication = token;
+                                this.privConversationServiceConnector.onToken(token);
 
                                 break;
 
@@ -437,12 +435,13 @@ export class ConversationServiceAdapter extends ServiceRecognizerBase {
                     case "final":
 
                         const speechPayload: SpeechResponsePayload = SpeechResponsePayload.fromJSON(message.textBody);
+                        const conversationResultReason: ResultReason = (conversationMessageType === "final") ? ResultReason.TranslatedParticipantSpeech : ResultReason.TranslatingParticipantSpeech;
 
                         const speechResult: ConversationTranslationResult = new ConversationTranslationResult(speechPayload.participantId,
                             this.getTranslations(speechPayload.translations),
                             speechPayload.language,
-                            undefined,
-                            undefined,
+                            speechPayload.id,
+                            conversationResultReason,
                             speechPayload.recognition,
                             undefined,
                             undefined,
@@ -483,6 +482,7 @@ export class ConversationServiceAdapter extends ServiceRecognizerBase {
                     case "translated_message":
 
                         const textPayload: TextResponsePayload = TextResponsePayload.fromJSON(message.textBody);
+                        // TODO: (Native parity) a result reason should be set based whether the participantId is ours or not
 
                         const textResult: ConversationTranslationResult = new ConversationTranslationResult(textPayload.participantId,
                             this.getTranslations(textPayload.translations),

@@ -7,7 +7,7 @@ import {
     connectivity,
     ISpeechConfigAudioDevice,
     type,
-} from "../../common.speech/Exports";
+} from "../../common.speech/Exports.js";
 import {
     AudioSourceEvent,
     AudioSourceInitializingEvent,
@@ -22,10 +22,10 @@ import {
     IAudioStreamNode,
     IStreamChunk,
     Stream,
-} from "../../common/Exports";
-import { createNoDashGuid } from "../../common/Guid";
-import { AudioStreamFormat, PullAudioInputStreamCallback } from "../Exports";
-import { AudioStreamFormatImpl } from "./AudioStreamFormat";
+} from "../../common/Exports.js";
+import { createNoDashGuid } from "../../common/Guid.js";
+import { AudioStreamFormat, PullAudioInputStreamCallback } from "../Exports.js";
+import { AudioStreamFormatImpl } from "./AudioStreamFormat.js";
 
 /**
  * Represents audio input stream used for custom audio input configurations.
@@ -180,31 +180,6 @@ export class PushAudioInputStreamImpl extends PushAudioInputStream implements IA
 
     public id(): string {
         return this.privId;
-    }
-
-    public get blob(): Promise<Blob | Buffer> {
-        return this.attach("id").then<Blob | Buffer>((audioNode: IAudioStreamNode): Promise<Blob | Buffer> => {
-            const data: ArrayBuffer[] = [];
-            let bufferData = Buffer.from("");
-            const readCycle = (): Promise<Blob | Buffer> =>
-                audioNode.read().then<Blob | Buffer>((audioStreamChunk: IStreamChunk<ArrayBuffer>): Promise<Blob | Buffer> => {
-                    if (!audioStreamChunk || audioStreamChunk.isEnd) {
-                        if (typeof (XMLHttpRequest) !== "undefined" && typeof (Blob) !== "undefined") {
-                            return Promise.resolve(new Blob(data));
-                        } else {
-                            return Promise.resolve(Buffer.from(bufferData));
-                        }
-                    } else {
-                        if (typeof (Blob) !== "undefined") {
-                            data.push(audioStreamChunk.buffer);
-                        } else {
-                            bufferData = Buffer.concat([bufferData, this.toBuffer(audioStreamChunk.buffer)]);
-                        }
-                        return readCycle();
-                    }
-                });
-            return readCycle();
-        });
     }
 
     public turnOn(): Promise<void> {
@@ -364,10 +339,6 @@ export class PullAudioInputStreamImpl extends PullAudioInputStream implements IA
 
     public id(): string {
         return this.privId;
-    }
-
-    public get blob(): Promise<Blob | Buffer> {
-        return Promise.reject("Not implemented");
     }
 
     public turnOn(): Promise<void> {

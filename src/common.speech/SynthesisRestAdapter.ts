@@ -4,13 +4,13 @@ import {
     RestConfigBase,
     RestMessageAdapter,
     RestRequestType,
-} from "../common.browser/Exports";
+} from "../common.browser/Exports.js";
 import {
     PropertyId,
-} from "../sdk/Exports";
-import { ConnectionFactoryBase } from "./ConnectionFactoryBase";
-import { SynthesizerConfig } from "./Exports";
-import { HeaderNames } from "./HeaderNames";
+} from "../sdk/Exports.js";
+import { ConnectionFactoryBase } from "./ConnectionFactoryBase.js";
+import { AuthInfo, IAuthentication, SynthesizerConfig } from "./Exports.js";
+import { HeaderNames } from "./HeaderNames.js";
 
 /**
  * Implements methods for speaker recognition classes, sending requests to endpoint
@@ -20,8 +20,9 @@ import { HeaderNames } from "./HeaderNames";
 export class SynthesisRestAdapter {
     private privRestAdapter: RestMessageAdapter;
     private privUri: string;
+    private privAuthentication: IAuthentication;
 
-    public constructor(config: SynthesizerConfig) {
+    public constructor(config: SynthesizerConfig, authentication: IAuthentication) {
 
         let endpoint = config.parameters.getProperty(PropertyId.SpeechServiceConnection_Endpoint, undefined);
         if (!endpoint) {
@@ -32,9 +33,8 @@ export class SynthesisRestAdapter {
         this.privUri = `${endpoint}/cognitiveservices/voices/list`;
 
         const options: IRequestOptions = RestConfigBase.requestOptions;
-        options.headers[RestConfigBase.configParams.subscriptionKey] = config.parameters.getProperty(PropertyId.SpeechServiceConnection_Key, undefined);
-
         this.privRestAdapter = new RestMessageAdapter(options);
+        this.privAuthentication = authentication;
     }
 
     /**
@@ -46,7 +46,10 @@ export class SynthesisRestAdapter {
      */
     public getVoicesList(connectionId: string): Promise<IRestResponse> {
         this.privRestAdapter.setHeaders(HeaderNames.ConnectionId, connectionId);
-        return this.privRestAdapter.request(RestRequestType.Get, this.privUri);
+        return this.privAuthentication.fetch(connectionId).then((authInfo: AuthInfo): Promise<IRestResponse> => {
+            this.privRestAdapter.setHeaders(authInfo.headerName, authInfo.token);
+            return this.privRestAdapter.request(RestRequestType.Get, this.privUri);
+        });
     }
 
 }

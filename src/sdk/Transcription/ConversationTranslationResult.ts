@@ -2,10 +2,10 @@
 // Licensed under the MIT license.
 // Multi-device Conversation is a Preview feature.
 
-import { PropertyCollection } from "../PropertyCollection";
-import { ResultReason } from "../ResultReason";
-import { TranslationRecognitionResult } from "../TranslationRecognitionResult";
-import { Translations } from "../Translations";
+import { PropertyCollection } from "../PropertyCollection.js";
+import { ResultReason } from "../ResultReason.js";
+import { TranslationRecognitionResult } from "../TranslationRecognitionResult.js";
+import { Translations } from "../Translations.js";
 
 export class ConversationTranslationResult extends TranslationRecognitionResult {
     private privId: string;
@@ -22,7 +22,7 @@ export class ConversationTranslationResult extends TranslationRecognitionResult 
                        errorDetails?: string,
                        json?: string,
                        properties?: PropertyCollection) {
-        super(translations, resultId, reason, text, duration, offset, errorDetails, json, properties);
+        super(translations, resultId, reason, text, duration, offset, undefined, undefined, errorDetails, json, properties);
         this.privId = participantId;
         this.privOrigLang = originalLanguage;
     }

@@ -1,15 +1,17 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
-
-import { marshalPromiseToCallbacks } from "../../common/Exports";
-import { AudioConfigImpl } from "../../sdk/Audio/AudioConfig";
-import { Contracts } from "../../sdk/Contracts";
+import { marshalPromiseToCallbacks } from "../../common/Exports.js";
+import { AudioConfigImpl } from "../../sdk/Audio/AudioConfig.js";
+import { AudioStreamFormatImpl } from "../../sdk/Audio/AudioStreamFormat.js";
+import { Contracts } from "../../sdk/Contracts.js";
 import {
     AudioConfig,
     CancellationEventArgs,
     Conversation,
     ConversationInfo,
-    ConversationTranscriber,
+    Meeting,
+    MeetingInfo,
+    MeetingTranscriber,
     PropertyCollection,
     PropertyId,
     Recognizer,
@@ -17,7 +19,7 @@ import {
     SpeechRecognitionEventArgs,
     SpeechTranslationConfig,
     SpeechTranslationConfigImpl,
-} from "../../sdk/Exports";
+} from "../../sdk/Exports.js";
 import {
     IAuthentication,
     IConnectionFactory,
@@ -27,7 +29,7 @@ import {
     SpeechServiceConfig,
     TranscriberConnectionFactory,
     TranscriptionServiceRecognizer,
-} from "../Exports";
+} from "../Exports.js";
 
 export class TranscriberRecognizer extends Recognizer {
 
@@ -39,15 +41,21 @@ export class TranscriberRecognizer extends Recognizer {
 
     private privDisposedRecognizer: boolean;
     private privConversation: Conversation;
+    private privMeeting: Meeting;
+    private isMeetingRecognizer: boolean;
 
     /**
      * TranscriberRecognizer constructor.
      * @constructor
-     * @param {AudioConfig} audioConfig - An optional audio configuration associated with the recognizer
+     * @param {SpeechTranslationConfig} speechTranslationConfig - Non-audio configuration associated with the recognizer
+     * @param {AudioConfig} audioConfig - An audio configuration associated with the recognizer
      */
-    public constructor(speechTranslationConfig: SpeechTranslationConfig, audioConfig?: AudioConfig) {
+    public constructor(speechTranslationConfig: SpeechTranslationConfig, audioConfig: AudioConfig) {
         const speechTranslationConfigImpl: SpeechTranslationConfigImpl = speechTranslationConfig as SpeechTranslationConfigImpl;
         Contracts.throwIfNull(speechTranslationConfigImpl, "speechTranslationConfig");
+
+        const audioConfigImpl: AudioConfigImpl = audioConfig as AudioConfigImpl;
+        Contracts.throwIfNull(audioConfigImpl, "audioConfigImpl");
 
         Contracts.throwIfNullOrWhitespace(
             speechTranslationConfigImpl.speechRecognitionLanguage,
@@ -55,6 +63,7 @@ export class TranscriberRecognizer extends Recognizer {
 
         super(audioConfig, speechTranslationConfigImpl.properties, new TranscriberConnectionFactory());
         this.privDisposedRecognizer = false;
+        this.isMeetingRecognizer = false;
     }
 
     public get speechRecognitionLanguage(): string {
@@ -78,12 +87,28 @@ export class TranscriberRecognizer extends Recognizer {
 
     public set conversation(c: Conversation) {
         Contracts.throwIfNullOrUndefined(c, "Conversation");
+        this.isMeetingRecognizer = false;
         this.privConversation = c;
     }
 
     public getConversationInfo(): ConversationInfo {
         Contracts.throwIfNullOrUndefined(this.privConversation, "Conversation");
         return this.privConversation.conversationInfo;
+    }
+
+    public set meeting(m: Meeting) {
+        Contracts.throwIfNullOrUndefined(m, "Meeting");
+        this.isMeetingRecognizer = true;
+        this.privMeeting = m;
+    }
+
+    public getMeetingInfo(): MeetingInfo {
+        Contracts.throwIfNullOrUndefined(this.privMeeting, "Meeting");
+        return this.privMeeting.meetingInfo;
+    }
+
+    public IsMeetingRecognizer(): boolean {
+        return this.isMeetingRecognizer;
     }
 
     public startContinuousRecognitionAsync(cb?: () => void, err?: (e: string) => void): void {
@@ -107,7 +132,29 @@ export class TranscriberRecognizer extends Recognizer {
         await reco.sendSpeechEventAsync(conversationInfo, command);
     }
 
-    public connectCallbacks(transcriber: ConversationTranscriber): void {
+    // Push async join/leave meeting message via serviceRecognizer
+    public async pushMeetingEvent(meetingInfo: MeetingInfo, command: string): Promise<void> {
+        const reco = (this.privReco) as TranscriptionServiceRecognizer;
+        Contracts.throwIfNullOrUndefined(reco, "serviceRecognizer");
+        await reco.sendMeetingSpeechEventAsync(meetingInfo, command);
+    }
+
+    public async enforceAudioGating(): Promise<void> {
+        const audioConfigImpl = this.audioConfig as AudioConfigImpl;
+        const format: AudioStreamFormatImpl = await audioConfigImpl.format;
+        const channels = format.channels;
+        if (channels === 1) {
+            if (this.properties.getProperty("f0f5debc-f8c9-4892-ac4b-90a7ab359fd2", "false").toLowerCase() !== "true") {
+                throw new Error("Single channel audio configuration for MeetingTranscriber is currently under private preview, please contact diarizationrequest@microsoft.com for more details");
+            }
+        } else if (channels !== 8) {
+            throw new Error(`Unsupported audio configuration: Detected ${channels}-channel audio`);
+        }
+        return;
+    }
+
+    public connectMeetingCallbacks(transcriber: MeetingTranscriber): void {
+        this.isMeetingRecognizer = true;
         this.canceled = (s: any, e: CancellationEventArgs): void => {
             if (!!transcriber.canceled) {
                 transcriber.canceled(transcriber, e);

@@ -1,15 +1,14 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-import { AutoDetectSourceLanguagesOpenRangeOptionName } from "../common.speech/Exports";
-import {Contracts} from "./Contracts";
+import { AutoDetectSourceLanguagesOpenRangeOptionName } from "../common.speech/Exports.js";
+import {Contracts} from "./Contracts.js";
 import {
     PropertyCollection,
     PropertyId,
     SourceLanguageConfig,
-} from "./Exports";
-import { LanguageIdMode } from "./LanguageIdMode";
-import { LanguageIdPriority } from "./LanguageIdPriority";
+} from "./Exports.js";
+import { LanguageIdMode } from "./LanguageIdMode.js";
 
 /**
  * Language auto detect configuration.
@@ -22,7 +21,7 @@ export class AutoDetectSourceLanguageConfig {
 
     private constructor() {
         this.privProperties = new PropertyCollection();
-        this.privProperties.setProperty(PropertyId.SpeechServiceConnection_AtStartLanguageIdPriority, "Latency");
+        this.privProperties.setProperty(PropertyId.SpeechServiceConnection_LanguageIdMode, "AtStart");
         this.privLanguageIdMode = LanguageIdMode.AtStart;
     }
 
@@ -103,31 +102,11 @@ export class AutoDetectSourceLanguageConfig {
     public set mode(mode: LanguageIdMode) {
         if (mode === LanguageIdMode.Continuous) {
             this.privProperties.setProperty(PropertyId.SpeechServiceConnection_RecognitionEndpointVersion, "2");
-            this.privProperties.setProperty(PropertyId.SpeechServiceConnection_ContinuousLanguageIdPriority, "Latency");
-        } else {
+            this.privProperties.setProperty(PropertyId.SpeechServiceConnection_LanguageIdMode, "Continuous");
+        } else { // LanguageIdMode.AtStart
             this.privProperties.setProperty(PropertyId.SpeechServiceConnection_RecognitionEndpointVersion, "1");
-            this.privProperties.setProperty(PropertyId.SpeechServiceConnection_ContinuousLanguageIdPriority, undefined);
+            this.privProperties.setProperty(PropertyId.SpeechServiceConnection_LanguageIdMode, "AtStart");
         }
         this.privLanguageIdMode = mode;
     }
-
-    /**
-     * @member AutoDetectSourceLanguageConfig.prototype.priority
-     * @function
-     * @public
-     * @param {LanguageIdPriority} priority LID priority desired.
-     * @summary Sets LID operation to desired priority
-     */
-    public set priority(priority: LanguageIdPriority) {
-        if (priority === LanguageIdPriority.Accuracy) {
-            if (this.privLanguageIdMode !== LanguageIdMode.Continuous) {
-                // Accuracy not allowed for continuous mode
-                this.privProperties.setProperty(PropertyId.SpeechServiceConnection_AtStartLanguageIdPriority, "Accuracy");
-            }
-        } else {
-            this.privProperties.setProperty(PropertyId.SpeechServiceConnection_ContinuousLanguageIdPriority, "Latency");
-            this.privProperties.setProperty(PropertyId.SpeechServiceConnection_AtStartLanguageIdPriority, "Latency");
-        }
-    }
-
 }

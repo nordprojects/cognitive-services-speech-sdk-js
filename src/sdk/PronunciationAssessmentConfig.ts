@@ -1,15 +1,15 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-import { ServiceRecognizerBase } from "../common.speech/ServiceRecognizerBase";
-import { Contracts } from "./Contracts";
+import { ServiceRecognizerBase } from "../common.speech/ServiceRecognizerBase.js";
+import { Contracts } from "./Contracts.js";
 import {
     PronunciationAssessmentGradingSystem,
     PronunciationAssessmentGranularity,
     PropertyCollection,
     PropertyId,
     Recognizer
-} from "./Exports";
+} from "./Exports.js";
 
 interface PronunciationAssessmentJSON {
     referenceText: string;
@@ -19,6 +19,7 @@ interface PronunciationAssessmentJSON {
     nbestPhonemeCount: number;
     dimension: string;
     enableMiscue: boolean;
+    enableProsodyAssessment: boolean;
 }
 
 /**
@@ -30,6 +31,8 @@ export class PronunciationAssessmentConfig {
     private privProperties: PropertyCollection;
     private privPhonemeAlphabet: string;
     private privNBestPhonemeCount: number;
+    private privEnableProsodyAssessment: boolean;
+    private privContentAssessmentTopic: string;
 
     /**
      * PronunciationAssessmentConfig constructor.
@@ -58,6 +61,8 @@ export class PronunciationAssessmentConfig {
      * @param {string} json The json string containing the pronunciation assessment parameters.
      * @return {PronunciationAssessmentConfig} Instance of PronunciationAssessmentConfig
      * @summary Creates an instance of the PronunciationAssessmentConfig from json.
+     * This method is designed to support the pronunciation assessment parameters still in preview.
+     * Under normal circumstances, use the constructor instead.
      */
     public static fromJSON(json: string): PronunciationAssessmentConfig {
         Contracts.throwIfNullOrUndefined(json, "json");
@@ -75,7 +80,11 @@ export class PronunciationAssessmentConfig {
     public applyTo(recognizer: Recognizer): void {
         this.updateJson();
         const recoBase = recognizer.internalData as ServiceRecognizerBase;
-        recoBase.speechContext.setPronunciationAssessmentParams(this.properties.getProperty(PropertyId.PronunciationAssessment_Params));
+        recoBase.expectContentAssessmentResponse = !!this.privContentAssessmentTopic;
+        recoBase.speechContext.setPronunciationAssessmentParams(
+            this.properties.getProperty(PropertyId.PronunciationAssessment_Params),
+            this.privContentAssessmentTopic,
+            recoBase.isSpeakerDiarizationEnabled);
     }
 
     /**
@@ -116,6 +125,32 @@ export class PronunciationAssessmentConfig {
     }
 
     /**
+     * Sets the boolean enableMiscue property.
+     * Added in version 1.26.0
+     * @member PronunciationAssessmentConfig.prototype.enableMiscue
+     * @function
+     * @public
+     * @param {boolean} enableMiscue - enable miscue.
+     */
+    public set enableMiscue(enableMiscue: boolean) {
+        const enableMiscueString = enableMiscue ? "true" : "false";
+        this.properties.setProperty(PropertyId.PronunciationAssessment_EnableMiscue, enableMiscueString);
+    }
+
+    /**
+     * Gets the boolean enableMiscue property.
+     * Added in version 1.26.0
+     * @member PronunciationAssessmentConfig.prototype.enableMiscue
+     * @function
+     * @public
+     * @return {boolean} enableMiscue - enable miscue.
+     */
+    public get enableMiscue(): boolean {
+        const enableMiscueString = this.properties.getProperty(PropertyId.PronunciationAssessment_EnableMiscue, "false");
+        return (enableMiscueString.toLowerCase() === "true");
+    }
+
+    /**
      * Sets the nbest phoneme count
      * Added in version 1.20.0
      * @member PronunciationAssessmentConfig.prototype.nbestPhonemeCount
@@ -125,6 +160,30 @@ export class PronunciationAssessmentConfig {
      */
     public set nbestPhonemeCount(nbestPhonemeCount: number) {
         this.privNBestPhonemeCount = nbestPhonemeCount;
+    }
+
+    /**
+     * Enables the prosody assessment.
+     * Added in version 1.34.0
+     * @member PronunciationAssessmentConfig.prototype.enableProsodyAssessment
+     * @function
+     * @public
+     * @param {boolean} enableProsodyAssessment - enable prosody assessment.
+     */
+    public set enableProsodyAssessment(enableProsodyAssessment: boolean) {
+        this.privEnableProsodyAssessment = enableProsodyAssessment;
+    }
+
+    /**
+     * Enables content assessment and sets the topic.
+     * Added in version 1.34.0
+     * @member PronunciationAssessmentConfig.prototype.enableContentAssessmentWithTopic
+     * @function
+     * @public
+     * @param {string} topic - Topic for content assessment.
+     */
+    public enableContentAssessmentWithTopic(topic: string): void {
+        this.privContentAssessmentTopic = topic;
     }
 
     /**
@@ -165,14 +224,14 @@ export class PronunciationAssessmentConfig {
             paramsJson.nbestPhonemeCount = this.privNBestPhonemeCount;
         }
 
+        paramsJson.enableProsodyAssessment = this.privEnableProsodyAssessment;
+
         // always set dimension to Comprehensive
         paramsJson.dimension = "Comprehensive";
 
         const enableMiscueString = this.privProperties.getProperty(PropertyId.PronunciationAssessment_EnableMiscue);
-        if (enableMiscueString === "true") {
-            paramsJson.enableMiscue = true;
-        } else if (enableMiscueString === "false") {
-            paramsJson.enableMiscue = false;
+        if (enableMiscueString) {
+            paramsJson.enableMiscue = this.enableMiscue;
         }
 
         this.privProperties.setProperty(PropertyId.PronunciationAssessment_Params, JSON.stringify(paramsJson));

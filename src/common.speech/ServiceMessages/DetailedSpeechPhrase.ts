@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-import { IPrimaryLanguage, RecognitionStatus } from "../Exports";
+import { IPrimaryLanguage, RecognitionStatus } from "../Exports.js";
 
 // speech.phrase for detailed
 export interface IDetailedSpeechPhrase {
@@ -22,6 +22,7 @@ export interface IPhrase {
     Display?: string;
     DisplayText?: string;
     Words?: IWord[];
+    DisplayWords?: IWord[];
 }
 
 export interface IWord {
@@ -56,6 +57,11 @@ export class DetailedSpeechPhrase implements IDetailedSpeechPhrase {
                 for (const details of this.privDetailedSpeechPhrase.NBest) {
                     if (!!details.Words) {
                         for (const word of details.Words) {
+                            word.Offset += offset;
+                        }
+                    }
+                    if (!!details.DisplayWords) {
+                        for (const word of details.DisplayWords) {
                             word.Offset += offset;
                         }
                     }

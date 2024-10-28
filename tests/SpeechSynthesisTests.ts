@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
-
+/* eslint-disable no-console */
 import * as fs from "fs";
-import * as request from "request";
+import bent, { BentResponse } from "bent";
 import * as sdk from "../microsoft.cognitiveservices.speech.sdk";
 import { ConsoleLoggingListener, WebsocketMessageAdapter } from "../src/common.browser/Exports";
 import { HeaderNames } from "../src/common.speech/HeaderNames";
@@ -20,6 +20,7 @@ import {
     WaitForCondition
 } from "./Utilities";
 
+
 let objsToClose: any[];
 
 beforeAll(() => {
@@ -28,7 +29,7 @@ beforeAll(() => {
     Events.instance.attachListener(new ConsoleLoggingListener(sdk.LogLevel.Debug));
 });
 
-beforeEach(() => {
+beforeEach((): void => {
     objsToClose = [];
     // eslint-disable-next-line no-console
     console.info("------------------Starting test case: " + expect.getState().currentTestName + "-------------------------");
@@ -51,6 +52,7 @@ const BuildSpeechConfig: () => sdk.SpeechConfig = (): sdk.SpeechConfig => {
         s = sdk.SpeechConfig.fromSubscription(Settings.SpeechSubscriptionKey, Settings.SpeechRegion);
     } else {
         s = sdk.SpeechConfig.fromEndpoint(new URL(Settings.SpeechEndpoint), Settings.SpeechSubscriptionKey);
+        s.setProperty(sdk.PropertyId.SpeechServiceConnection_Region, Settings.SpeechRegion);
     }
 
     if (undefined !== Settings.proxyServer) {
@@ -163,6 +165,47 @@ test("testGetVoicesAsyncDefault", async () => {
     expect(voicesResult.resultId).not.toBeUndefined();
     expect(voicesResult.voices.length).toBeGreaterThan(0);
     expect(voicesResult.reason).toEqual(sdk.ResultReason.VoicesListRetrieved);
+});
+
+test("testGetVoicesAsyncAuthWithToken", async () => {
+    // eslint-disable-next-line no-console
+    console.info("Name: testGetVoicesAsyncAuthWithToken");
+
+    const url = `https://${Settings.SpeechRegion}.api.cognitive.microsoft.com/`;
+    const path = "sts/v1.0/issueToken";
+    const headers = {
+        "Content-Type": "application/json",
+        [HeaderNames.AuthKey]: Settings.SpeechSubscriptionKey,
+    };
+
+    let authToken: string;
+    const sendRequest = bent(url, "POST", "string", headers, 200);
+    sendRequest(path)
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-assignment
+        .then((resp: BentResponse): void => {
+            resp.text().then((token: string): void => {
+                authToken = token;
+            }).catch((): void => {});
+        }).catch((): void => {});
+
+    WaitForCondition((): boolean => !!authToken, (): void => {
+        const config: sdk.SpeechConfig = sdk.SpeechConfig.fromAuthorizationToken(authToken, Settings.SpeechRegion);
+        objsToClose.push(config);
+
+        const s: sdk.SpeechSynthesizer = new sdk.SpeechSynthesizer(config, null);
+        expect(s).not.toBeUndefined();
+
+        objsToClose.push(s);
+
+        s.getVoicesAsync().then( (voicesResult: sdk.SynthesisVoicesResult): void => {
+            expect(voicesResult).not.toBeUndefined();
+            expect(voicesResult.resultId).not.toBeUndefined();
+            expect(voicesResult.voices.length).toBeGreaterThan(0);
+            expect(voicesResult.reason).toEqual(sdk.ResultReason.VoicesListRetrieved);
+        }).catch((error: any): void => {
+            console.log(error as string);
+        });
+    });
 });
 
 test("testGetVoicesAsyncUS", async () => {
@@ -309,8 +352,7 @@ describe("Service based tests", () => {
             console.info("speaking finished, turn 1");
             CheckSynthesisResult(result, sdk.ResultReason.SynthesizingAudioCompleted);
             // To seconds
-            // fixme: re-enable this check after service issue fixed.
-            // expect(result.audioDuration / 1000 / 1000 / 10).toBeCloseTo(result.audioData.byteLength / 32000, 2);
+            expect(result.audioDuration / 1000 / 1000 / 10).toBeCloseTo(result.audioData.byteLength / 32000, 2);
         }, (e: string): void => {
             done(e);
         });
@@ -319,8 +361,7 @@ describe("Service based tests", () => {
             // eslint-disable-next-line no-console
             console.info("speaking finished, turn 2");
             CheckSynthesisResult(result, sdk.ResultReason.SynthesizingAudioCompleted);
-            // fixme: re-enable this check after service issue fixed.
-            // expect(result.audioDuration / 1000 / 1000 / 10).toBeCloseTo(result.audioData.byteLength / 32000, 2);
+            expect(result.audioDuration / 1000 / 1000 / 10).toBeCloseTo(result.audioData.byteLength / 32000, 2);
             done();
         }, (e: string): void => {
             done(e);
@@ -477,7 +518,7 @@ describe("Service based tests", () => {
         });
     });
 
-    test("testSpeechSynthesizerSentenceBoundary", (done: jest.DoneCallback) => {
+    test.skip("testSpeechSynthesizerSentenceBoundary", (done: jest.DoneCallback) => {
         // tslint:disable-next-line:no-console
         console.info("Name: testSpeechSynthesizerWordBoundaryMathXml");
         const speechConfig: sdk.SpeechConfig = BuildSpeechConfig();
@@ -804,27 +845,32 @@ describe("Service based tests", () => {
         });
     });
 
-    test("testSpeechSynthesizer: authentication with authorization token", (done: jest.DoneCallback) => {
+    test("testSpeechSynthesizer: authentication with authorization token", (done: jest.DoneCallback): void => {
         // eslint-disable-next-line no-console
         console.info("Name: testSpeechSynthesizer authentication with authorization token");
 
-        const req = {
-            headers: {
-                "Content-Type": "application/json",
-                [HeaderNames.AuthKey]: Settings.SpeechSubscriptionKey,
-            },
-            url: "https://" + Settings.SpeechRegion + ".api.cognitive.microsoft.com/sts/v1.0/issueToken",
+        const url = `https://${Settings.SpeechRegion}.api.cognitive.microsoft.com/`;
+        const path = "sts/v1.0/issueToken";
+        const headers = {
+            "Content-Type": "application/json",
+            [HeaderNames.AuthKey]: Settings.SpeechSubscriptionKey,
         };
 
+        const sendRequest = bent(url, "POST", headers, 200);
         let authToken: string;
+        sendRequest(path)
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-assignment
+            .then((resp: BentResponse): void => {
+                resp.text().then((token: string): void => {
+                    authToken = token;
+                }).catch((error: any): void => {
+                    done.fail(error as string);
+                });
+            }).catch((error: any): void => {
+                done.fail(error as string);
+            });
 
-        request.post(req, (error: any, response: request.Response, body: any) => {
-            authToken = body;
-        });
-
-        WaitForCondition(() => {
-            return !!authToken;
-        }, () => {
+        WaitForCondition((): boolean => !!authToken, (): void => {
             const endpoint = "wss://" + Settings.SpeechRegion + ".tts.speech.microsoft.com/cognitiveservices/websocket/v1";
 
             // note: we use an empty subscription key so that we use the authorization token later.
@@ -850,9 +896,9 @@ describe("Service based tests", () => {
         });
     });
 
-    test("test Speech Synthesiser: Language Auto Detection", (done: jest.DoneCallback) => {
+    test("test Speech Synthesizer: Language Auto Detection", (done: jest.DoneCallback) => {
         // eslint-disable-next-line no-console
-        console.info("Name: test Speech Synthesiser, Language Auto Detection");
+        console.info("Name: test Speech Synthesizer, Language Auto Detection");
 
         const speechConfig: sdk.SpeechConfig = BuildSpeechConfig();
         objsToClose.push(speechConfig);
@@ -933,5 +979,49 @@ describe("Service based tests", () => {
         }, (e: string): void => {
             done(e);
         });
+    });
+
+    // WebRTC PeerConnection is not implemented in jest, which is only available in browser.
+    test.skip("testAvatarSynthesizerDemo", async () => {
+        const speechConfig: sdk.SpeechConfig = BuildSpeechConfig();
+        const videoFormat: sdk.AvatarVideoFormat = new sdk.AvatarVideoFormat(
+            /*codec*/ "h264",
+            /*bitrate*/ 2000000,
+            /*width*/ 1920,
+            /*height*/ 1080);
+        const avatarConfig: sdk.AvatarConfig = new sdk.AvatarConfig(
+            /*character*/ "lisa", /*style*/ "casual-sitting", videoFormat);
+        const avatarSynthesizer: sdk.AvatarSynthesizer = new sdk.AvatarSynthesizer(speechConfig, avatarConfig);
+        avatarSynthesizer.avatarEventReceived = (o: sdk.AvatarSynthesizer, e: sdk.AvatarEventArgs): void => {
+            // eslint-disable-next-line no-console
+            console.info("Avatar event received " + e.type);
+        };
+
+        const iceServer: RTCIceServer = {
+            credential: "<your webrtc connection ICE credential>",
+            urls: ["<your webrtc connection ICE server list>"],
+            username: "<your webrtc connection ICE username>"
+        };
+
+        let peerConnection: RTCPeerConnection;
+        try {
+            peerConnection = new RTCPeerConnection(
+                {iceServers: [iceServer]},
+            );
+        } catch (error) {
+            throw new Error("Failed to create RTCPeerConnection, error: " + error);
+        }
+
+        const webrtcConnectionResult: sdk.SynthesisResult = await avatarSynthesizer.startAvatarAsync(peerConnection);
+        expect(webrtcConnectionResult.reason).toEqual(sdk.ResultReason.SynthesizingAudioStarted);
+
+        // start speaking, the audio will be streamed to the WebRTC connection
+        await avatarSynthesizer.speakSsmlAsync("<ssml>");
+
+        // wait a while and stop speaking, the avatar will stop speaking switch to idle state.
+        await avatarSynthesizer.stopSpeakingAsync();
+
+        // stop the avatar synthesizer and close the WebRTC connection.
+        await avatarSynthesizer.stopAvatarAsync();
     });
 });

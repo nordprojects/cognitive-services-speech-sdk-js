@@ -10,11 +10,11 @@ import {
     RecognitionMode,
     RecognizerConfig,
     ServiceRecognizerBase,
-    SpeechServiceConfig,
-} from "../common.speech/Exports";
-import { marshalPromiseToCallbacks } from "../common/Exports";
-import { AudioConfigImpl } from "./Audio/AudioConfig";
-import { Contracts } from "./Contracts";
+    SpeechServiceConfig
+} from "../common.speech/Exports.js";
+import { marshalPromiseToCallbacks } from "../common/Exports.js";
+import { AudioConfigImpl } from "./Audio/AudioConfig.js";
+import { Contracts } from "./Contracts.js";
 import {
     AudioConfig,
     IntentRecognitionCanceledEventArgs,
@@ -26,9 +26,9 @@ import {
     PropertyId,
     Recognizer,
     SpeechConfig,
-} from "./Exports";
-import { LanguageUnderstandingModelImpl } from "./LanguageUnderstandingModel";
-import { SpeechConfigImpl } from "./SpeechConfig";
+} from "./Exports.js";
+import { LanguageUnderstandingModelImpl } from "./LanguageUnderstandingModel.js";
+import { SpeechConfigImpl } from "./SpeechConfig.js";
 
 /**
  * Intent recognizer.
@@ -308,7 +308,7 @@ export class IntentRecognizer extends Recognizer {
     }
 
     protected createRecognizerConfig(speechConfig: SpeechServiceConfig): RecognizerConfig {
-        return new RecognizerConfig(speechConfig, this.properties);
+        return new RecognizerConfig(speechConfig, this.privProperties);
     }
 
     protected createServiceRecognizer(authentication: IAuthentication, connectionFactory: IConnectionFactory, audioConfig: AudioConfig, recognizerConfig: RecognizerConfig): ServiceRecognizerBase {

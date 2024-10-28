@@ -37,6 +37,7 @@ const BuildSpeechConfig: () => sdk.SpeechConfig = (): sdk.SpeechConfig => {
         s = sdk.SpeechConfig.fromSubscription(Settings.SpeechSubscriptionKey, Settings.SpeechRegion);
     } else {
         s = sdk.SpeechConfig.fromEndpoint(new URL(Settings.SpeechEndpoint), Settings.SpeechSubscriptionKey);
+        s.setProperty(sdk.PropertyId.SpeechServiceConnection_Region, Settings.SpeechRegion);
     }
 
     if (undefined !== Settings.proxyServer) {
@@ -90,4 +91,32 @@ Settings.testIfDOMCondition("Diagnostics log file throws", (): void => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
     sdk.Diagnostics.SetLoggingLevel(sdk.LogLevel.Debug);
     expect((): void => sdk.Diagnostics.SetLogOutputPath(Settings.TestLogPath)).toThrow();
+});
+
+test("Diagnostics callback works", (done: jest.DoneCallback): void => {
+    sdk.Diagnostics.SetLoggingLevel(sdk.LogLevel.Debug);
+    // eslint-disable-next-line no-console
+    console.info("Name: callback invoked on debug output");
+
+    const s: sdk.SpeechConfig = BuildSpeechConfig();
+    objsToClose.push(s);
+
+    const r: sdk.SpeechRecognizer = new sdk.SpeechRecognizer(s);
+    objsToClose.push(r);
+
+    let callbackInvoked: boolean = false;
+    const connection: sdk.Connection = sdk.Connection.fromRecognizer(r);
+
+    const logCallback = (s: string): void => {
+        void s;
+        callbackInvoked = true;
+    };
+
+    sdk.Diagnostics.onLogOutput = logCallback;
+
+    connection.openConnection();
+
+    WaitForCondition((): boolean => callbackInvoked, (): void => {
+        connection.closeConnection(() => done());
+    });
 });

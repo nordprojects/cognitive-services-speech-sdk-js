@@ -2,9 +2,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-import { MessageType } from "./ConnectionMessage";
-import { ArgumentNullError, InvalidOperationError } from "./Error";
-import { createNoDashGuid } from "./Guid";
+import { MessageType } from "./ConnectionMessage.js";
+import { ArgumentNullError, InvalidOperationError } from "./Error.js";
+import { createNoDashGuid } from "./Guid.js";
 
 export class RawWebsocketMessage {
     private privMessageType: MessageType;
@@ -17,7 +17,7 @@ export class RawWebsocketMessage {
         }
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        if (messageType === MessageType.Binary && payload.__proto__.constructor.name !== "ArrayBuffer") {
+        if (messageType === MessageType.Binary && Object.getPrototypeOf(payload).constructor.name !== "ArrayBuffer") {
             throw new InvalidOperationError("Payload must be ArrayBuffer");
         }
 

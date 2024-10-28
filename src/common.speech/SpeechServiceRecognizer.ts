@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-import { IAudioSource } from "../common/Exports";
+import { IAudioSource } from "../common/Exports.js";
 import {
     CancellationErrorCode,
     CancellationReason,
@@ -13,7 +13,7 @@ import {
     SpeechRecognitionEventArgs,
     SpeechRecognitionResult,
     SpeechRecognizer,
-} from "../sdk/Exports";
+} from "../sdk/Exports.js";
 import {
     CancellationErrorCodePropertyName,
     DetailedSpeechPhrase,
@@ -23,11 +23,11 @@ import {
     ServiceRecognizerBase,
     SimpleSpeechPhrase,
     SpeechHypothesis,
-} from "./Exports";
-import { IAuthentication } from "./IAuthentication";
-import { IConnectionFactory } from "./IConnectionFactory";
-import { RecognizerConfig } from "./RecognizerConfig";
-import { SpeechConnectionMessage } from "./SpeechConnectionMessage.Internal";
+} from "./Exports.js";
+import { IAuthentication } from "./IAuthentication.js";
+import { IConnectionFactory } from "./IConnectionFactory.js";
+import { RecognizerConfig } from "./RecognizerConfig.js";
+import { SpeechConnectionMessage } from "./SpeechConnectionMessage.Internal.js";
 
 // eslint-disable-next-line max-classes-per-file
 export class SpeechServiceRecognizer extends ServiceRecognizerBase {
@@ -42,32 +42,7 @@ export class SpeechServiceRecognizer extends ServiceRecognizerBase {
         speechRecognizer: SpeechRecognizer) {
         super(authentication, connectionFactory, audioSource, recognizerConfig, speechRecognizer);
         this.privSpeechRecognizer = speechRecognizer;
-        if (recognizerConfig.autoDetectSourceLanguages !== undefined) {
-            const sourceLanguages: string[] = recognizerConfig.autoDetectSourceLanguages.split(",");
-            this.privSpeechContext.setSection("languageId", {
-                Priority: recognizerConfig.languageIdPriority, // will only be set if continuous LID enabled
-                languages: sourceLanguages,
-                mode: recognizerConfig.languageIdMode,
-                onSuccess: { action: "Recognize" },
-                onUnknown: { action: "None" }
-            });
-            this.privSpeechContext.setSection("phraseOutput", {
-                interimResults: {
-                    resultType: "Auto"
-                },
-                phraseResults: {
-                    resultType: "Always"
-                }
-            });
-            const customModels: { language: string; endpoint: string }[] = recognizerConfig.sourceLanguageModels;
-            if (customModels !== undefined) {
-                this.privSpeechContext.setSection("phraseDetection", {
-                    customModels,
-                    onInterim: { action: "None" },
-                    onSuccess: { action: "None" },
-                });
-            }
-        }
+
     }
 
     protected async processTypeSpecificMessages(connectionMessage: SpeechConnectionMessage): Promise<boolean> {
@@ -113,7 +88,7 @@ export class SpeechServiceRecognizer extends ServiceRecognizerBase {
                 break;
             case "speech.phrase":
                 const simple: SimpleSpeechPhrase = SimpleSpeechPhrase.fromJSON(connectionMessage.textBody);
-                const resultReason: ResultReason = EnumTranslation.implTranslateRecognitionResult(simple.RecognitionStatus);
+                const resultReason: ResultReason = EnumTranslation.implTranslateRecognitionResult(simple.RecognitionStatus, this.privExpectContentAssessmentResponse);
 
                 this.privRequestSession.onPhraseRecognized(this.privRequestSession.currentTurnAudioOffset + simple.Offset + simple.Duration);
 
@@ -127,51 +102,55 @@ export class SpeechServiceRecognizer extends ServiceRecognizerBase {
                         EnumTranslation.implTranslateErrorDetails(cancellationErrorCode));
 
                 } else {
-                    if (!(this.privRequestSession.isSpeechEnded && resultReason === ResultReason.NoMatch && simple.RecognitionStatus !== RecognitionStatus.InitialSilenceTimeout)) {
-                        if (this.privRecognizerConfig.parameters.getProperty(OutputFormatPropertyName) === OutputFormat[OutputFormat.Simple]) {
-                            result = new SpeechRecognitionResult(
-                                this.privRequestSession.requestId,
-                                resultReason,
-                                simple.DisplayText,
-                                simple.Duration,
-                                simple.Offset + this.privRequestSession.currentTurnAudioOffset,
-                                simple.Language,
-                                simple.LanguageDetectionConfidence,
-                                undefined, // Speaker Id
-                                undefined,
-                                connectionMessage.textBody,
-                                resultProps);
-                        } else {
-                            const detailed: DetailedSpeechPhrase = DetailedSpeechPhrase.fromJSON(connectionMessage.textBody);
-                            const totalOffset: number = detailed.Offset + this.privRequestSession.currentTurnAudioOffset;
-                            const offsetCorrectedJson: string = detailed.getJsonWithCorrectedOffsets(totalOffset);
+                    // Like the native SDK's, don't event / return an EndOfDictation message.
+                    if (simple.RecognitionStatus === RecognitionStatus.EndOfDictation) {
+                        break;
+                    }
 
-                            result = new SpeechRecognitionResult(
-                                this.privRequestSession.requestId,
-                                resultReason,
-                                detailed.RecognitionStatus === RecognitionStatus.Success ? detailed.NBest[0].Display : undefined,
-                                detailed.Duration,
-                                totalOffset,
-                                detailed.Language,
-                                detailed.LanguageDetectionConfidence,
-                                undefined, // Speaker Id
-                                undefined,
-                                offsetCorrectedJson,
-                                resultProps);
-                        }
+                    if (this.privRecognizerConfig.parameters.getProperty(OutputFormatPropertyName) === OutputFormat[OutputFormat.Simple]) {
+                        result = new SpeechRecognitionResult(
+                            this.privRequestSession.requestId,
+                            resultReason,
+                            simple.DisplayText,
+                            simple.Duration,
+                            simple.Offset + this.privRequestSession.currentTurnAudioOffset,
+                            simple.Language,
+                            simple.LanguageDetectionConfidence,
+                            undefined, // Speaker Id
+                            undefined,
+                            connectionMessage.textBody,
+                            resultProps);
+                    } else {
+                        const detailed: DetailedSpeechPhrase = DetailedSpeechPhrase.fromJSON(connectionMessage.textBody);
+                        const totalOffset: number = detailed.Offset + this.privRequestSession.currentTurnAudioOffset;
+                        const offsetCorrectedJson: string = detailed.getJsonWithCorrectedOffsets(totalOffset);
 
-                        const event: SpeechRecognitionEventArgs = new SpeechRecognitionEventArgs(result, result.offset, this.privRequestSession.sessionId);
+                        result = new SpeechRecognitionResult(
+                            this.privRequestSession.requestId,
+                            resultReason,
+                            detailed.RecognitionStatus === RecognitionStatus.Success ? detailed.NBest[0].Display : undefined,
+                            detailed.Duration,
+                            totalOffset,
+                            detailed.Language,
+                            detailed.LanguageDetectionConfidence,
+                            undefined, // Speaker Id
+                            undefined,
+                            offsetCorrectedJson,
+                            resultProps);
+                    }
 
-                        if (!!this.privSpeechRecognizer.recognized) {
-                            try {
-                                this.privSpeechRecognizer.recognized(this.privSpeechRecognizer, event);
-                                /* eslint-disable no-empty */
-                            } catch (error) {
-                                // Not going to let errors in the event handler
-                                // trip things up.
-                            }
+                    const event: SpeechRecognitionEventArgs = new SpeechRecognitionEventArgs(result, result.offset, this.privRequestSession.sessionId);
+
+                    if (!!this.privSpeechRecognizer.recognized) {
+                        try {
+                            this.privSpeechRecognizer.recognized(this.privSpeechRecognizer, event);
+                            /* eslint-disable no-empty */
+                        } catch (error) {
+                            // Not going to let errors in the event handler
+                            // trip things up.
                         }
                     }
+
 
                     if (!!this.privSuccessCallback) {
                         try {

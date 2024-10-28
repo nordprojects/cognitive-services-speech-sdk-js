@@ -1,12 +1,13 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
-import * as request from "request";
+import bent, { BentResponse } from "bent";
 import * as sdk from "../../microsoft.cognitiveservices.speech.sdk";
 import { ConsoleLoggingListener } from "../../src/common.browser/Exports";
 import { HeaderNames } from "../../src/common.speech/HeaderNames";
 import { Events } from "../../src/common/Exports";
 import { Settings } from "../Settings";
 import { CreateRepeatingPullStream, WaitForCondition } from "../Utilities";
+
 
 let objsToClose: any[];
 
@@ -34,7 +35,7 @@ afterEach(() => {
     });
 });
 
-test("Non-refreshed auth token has sensible error message", (done: jest.DoneCallback) => {
+test("Non-refreshed auth token has sensible error message", (done: jest.DoneCallback): void => {
     // eslint-disable-next-line no-console
     console.info("Non-refreshed auth token has sensible error message");
 
@@ -45,24 +46,27 @@ test("Non-refreshed auth token has sensible error message", (done: jest.DoneCall
         return;
     }
 
-    const req = {
-        headers: {
-            "Content-Type": "application/json",
-            [HeaderNames.AuthKey]: Settings.SpeechSubscriptionKey,
-        },
-        url: "https://" + Settings.SpeechRegion + ".api.cognitive.microsoft.com/sts/v1.0/issueToken",
+    const tokenUrl = `https://${Settings.SpeechRegion}.api.cognitive.microsoft.com/`;
+    const tokenPath = "sts/v1.0/issueToken";
+    const headers = {
+        "Content-Type": "application/json",
+        [HeaderNames.AuthKey]: Settings.SpeechSubscriptionKey,
     };
-
+    const sendTokenRequest = bent(tokenUrl, "POST", headers, 200);
     let authToken: string;
+    sendTokenRequest(tokenPath)
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-assignment
+        .then((resp: BentResponse): void => {
+            resp.text().then((token: string): void => {
+                authToken = token;
+            }).catch((error: any): void => {
+                done.fail(error as string);
+            });
+        }).catch((error: any): void => {
+            done.fail(error as string);
+        });
 
-    request.post(req, (error: any, response: request.Response, body: any) => {
-        authToken = body;
-    });
-
-    WaitForCondition(() => {
-        return !!authToken;
-    }, () => {
-        
+    WaitForCondition((): boolean => !!authToken, (): void => {
         const s: sdk.SpeechConfig = sdk.SpeechConfig.fromAuthorizationToken(authToken, Settings.SpeechRegion);
         objsToClose.push(s);
 

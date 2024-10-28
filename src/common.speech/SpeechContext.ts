@@ -4,7 +4,7 @@
 import {
     DynamicGrammarBuilder,
     IDynamicGrammar,
-} from "./Exports";
+} from "./Exports.js";
 
 interface Context {
     [section: string]: any;
@@ -15,7 +15,17 @@ interface PhraseContext {
     phraseDetection?: {
         enrichment?: {
             pronunciationAssessment: any;
+            contentAssessment?: {
+                topic: string;
+            };
         };
+        speakerDiarization?: {
+            mode?: string;
+            audioSessionId?: string;
+            audioOffsetMs?: number;
+            identityProvider?: string;
+        };
+        mode?: string;
     };
     phraseOutput?: {
         detailed?: {
@@ -24,6 +34,7 @@ interface PhraseContext {
         format?: any;
     };
 }
+
 /**
  * Represents the JSON used in the speech.context message sent to the speech service.
  * The dynamic grammar is always refreshed from the encapsulated dynamic grammar object.
@@ -34,6 +45,15 @@ export class SpeechContext {
 
     public constructor(dynamicGrammar: DynamicGrammarBuilder) {
         this.privDynamicGrammar = dynamicGrammar;
+    }
+
+    /**
+     * Gets a section of the speech.context object.
+     * @param sectionName Name of the section to get.
+     * @return string or Context JSON serializable object that represents the value.
+     */
+    public getSection(sectionName: string): string | Context {
+        return (this.privContext[sectionName] || {}) as string | Context;
     }
 
     /**
@@ -50,7 +70,9 @@ export class SpeechContext {
      * This is only used by pronunciation assessment config.
      * Do not use externally, object returned will change without warning or notice.
      */
-    public setPronunciationAssessmentParams(params: string): void {
+    public setPronunciationAssessmentParams(params: string,
+        contentAssessmentTopic: string,
+        isSpeakerDiarizationEnabled: boolean = false): void {
         if (this.privContext.phraseDetection === undefined) {
             this.privContext.phraseDetection = {
                 enrichment: {
@@ -58,12 +80,43 @@ export class SpeechContext {
                 }
             };
         }
+        if (this.privContext.phraseDetection.enrichment === undefined) {
+            this.privContext.phraseDetection.enrichment = {
+                pronunciationAssessment: {}
+            };
+        }
         this.privContext.phraseDetection.enrichment.pronunciationAssessment = JSON.parse(params) as Context;
+        if (isSpeakerDiarizationEnabled) {
+            this.privContext.phraseDetection.mode = "Conversation";
+        }
         this.setWordLevelTimings();
         this.privContext.phraseOutput.detailed.options.push("PronunciationAssessment");
         if (this.privContext.phraseOutput.detailed.options.indexOf("SNR") === -1) {
             this.privContext.phraseOutput.detailed.options.push("SNR");
         }
+        if (!!contentAssessmentTopic) {
+            this.privContext.phraseDetection.enrichment.contentAssessment = {
+                topic: contentAssessmentTopic
+            };
+            this.privContext.phraseOutput.detailed.options.push("ContentAssessment");
+        }
+    }
+
+    public setDetailedOutputFormat(): void {
+        if (this.privContext.phraseOutput === undefined) {
+            this.privContext.phraseOutput = {
+                detailed: {
+                    options: []
+                },
+                format: {}
+            };
+        }
+        if (this.privContext.phraseOutput.detailed === undefined) {
+            this.privContext.phraseOutput.detailed = {
+                options: []
+            };
+        }
+        this.privContext.phraseOutput.format = "Detailed";
     }
 
     public setWordLevelTimings(): void {
@@ -84,6 +137,10 @@ export class SpeechContext {
         if (this.privContext.phraseOutput.detailed.options.indexOf("WordTimings") === -1) {
             this.privContext.phraseOutput.detailed.options.push("WordTimings");
         }
+    }
+
+    public setSpeakerDiarizationAudioOffsetMs(audioOffsetMs: number): void {
+        this.privContext.phraseDetection.speakerDiarization.audioOffsetMs = audioOffsetMs;
     }
 
     public toJSON(): string {

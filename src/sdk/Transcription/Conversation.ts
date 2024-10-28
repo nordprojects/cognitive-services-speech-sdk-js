@@ -12,6 +12,7 @@ import {
     ConversationRecognizerFactory,
     ConversationTranslatorCommandTypes,
     ConversationTranslatorMessageTypes,
+    IAuthentication,
     IInternalConversation,
     IInternalParticipant,
     InternalParticipants,
@@ -20,13 +21,13 @@ import {
     ParticipantEventArgs,
     ParticipantsListEventArgs,
     TranscriberRecognizer
-} from "../../common.speech/Exports";
+} from "../../common.speech/Exports.js";
 import {
     IDisposable,
     IErrorMessages,
     marshalPromiseToCallbacks
-} from "../../common/Exports";
-import { Contracts } from "../Contracts";
+} from "../../common/Exports.js";
+import { Contracts } from "../Contracts.js";
 import {
     ConnectionEventArgs,
     ConversationExpirationEventArgs,
@@ -40,10 +41,10 @@ import {
     PropertyCollection,
     PropertyId,
     SpeechTranslationConfig,
-} from "../Exports";
-import { SpeechTranslationConfigImpl } from "../SpeechTranslationConfig";
-import { Callback, ConversationInfo, ConversationProperties, IConversation } from "./IConversation";
-import { IParticipant, IUser, TranscriptionParticipant } from "./IParticipant";
+} from "../Exports.js";
+import { SpeechTranslationConfigImpl } from "../SpeechTranslationConfig.js";
+import { Callback, ConversationInfo, ConversationProperties, IConversation } from "./IConversation.js";
+import { IParticipant, IUser, TranscriptionParticipant } from "./IParticipant.js";
 
 export abstract class Conversation implements IConversation {
 
@@ -202,9 +203,11 @@ export class ConversationImpl extends Conversation implements IDisposable {
             // TODO: specify the regex required. Nicknames must be unique or get the duplicate nickname error
             // TODO: check what the max length is and if a truncation is required or if the service handles it without an error
             let hostNickname: string = speechConfig.getProperty(PropertyId[PropertyId.ConversationTranslator_Name]);
-            if (hostNickname === undefined || hostNickname === null || hostNickname.length <= 1 || hostNickname.length > 50) {
+            if (hostNickname === undefined || hostNickname === null) {
                 hostNickname = "Host";
             }
+            Contracts.throwIfNullOrTooLong(hostNickname, "nickname", 50);
+            Contracts.throwIfNullOrTooShort(hostNickname, "nickname", 2);
             speechConfig.setProperty(PropertyId[PropertyId.ConversationTranslator_Name], hostNickname);
 
         } else {
@@ -321,6 +324,9 @@ export class ConversationImpl extends Conversation implements IDisposable {
         this.privConversationTranslator = conversationTranslator;
     }
 
+    public onToken(token: IAuthentication): void {
+        this.privConversationTranslator.onToken(token);
+    }
 
     /**
      * Create a new conversation as Host
@@ -818,6 +824,7 @@ export class ConversationImpl extends Conversation implements IDisposable {
         if (!!this.privTranscriberRecognizer) {
             await this.privTranscriberRecognizer.close();
         }
+        await recognizer.enforceAudioGating();
         this.privTranscriberRecognizer = recognizer;
         this.privTranscriberRecognizer.conversation = this;
     }

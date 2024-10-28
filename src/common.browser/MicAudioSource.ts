@@ -5,7 +5,7 @@ import {
     connectivity,
     ISpeechConfigAudioDevice,
     type
-} from "../common.speech/Exports";
+} from "../common.speech/Exports.js";
 import {
     AudioSourceErrorEvent,
     AudioSourceEvent,
@@ -25,19 +25,19 @@ import {
     IAudioStreamNode,
     IStringDictionary,
     Stream,
-} from "../common/Exports";
-import { IStreamChunk } from "../common/Stream";
+} from "../common/Exports.js";
+import { IStreamChunk } from "../common/Stream.js";
 import {
     AudioStreamFormat,
     AudioStreamFormatImpl,
-} from "../sdk/Audio/AudioStreamFormat";
-import { IRecorder } from "./IRecorder";
+} from "../sdk/Audio/AudioStreamFormat.js";
+import { IRecorder } from "./IRecorder.js";
 
 // Extending the default definition with browser specific definitions for backward compatibility
 interface INavigator extends Navigator {
-    webkitGetUserMedia?: (constraints: MediaStreamConstraints, successCallback: NavigatorUserMediaSuccessCallback | undefined, errorCallback: NavigatorUserMediaErrorCallback) => void;
-    mozGetUserMedia?: (constraints: MediaStreamConstraints, successCallback: NavigatorUserMediaSuccessCallback | undefined, errorCallback: NavigatorUserMediaErrorCallback) => void;
-    msGetUserMedia?: (constraints: MediaStreamConstraints, successCallback: NavigatorUserMediaSuccessCallback, errorCallback: NavigatorUserMediaErrorCallback) => void;
+    webkitGetUserMedia: (constraints: MediaStreamConstraints, successCallback: NavigatorUserMediaSuccessCallback | undefined, errorCallback: NavigatorUserMediaErrorCallback) => void;
+    mozGetUserMedia: (constraints: MediaStreamConstraints, successCallback: NavigatorUserMediaSuccessCallback | undefined, errorCallback: NavigatorUserMediaErrorCallback) => void;
+    msGetUserMedia: (constraints: MediaStreamConstraints, successCallback: NavigatorUserMediaSuccessCallback, errorCallback: NavigatorUserMediaErrorCallback) => void;
 }
 
 export const AudioWorkletSourceURLPropertyName = "MICROPHONE-WorkletSourceUrl";
@@ -80,10 +80,6 @@ export class MicAudioSource implements IAudioSource {
 
     public get format(): Promise<AudioStreamFormatImpl> {
         return Promise.resolve(MicAudioSource.AUDIOFORMAT);
-    }
-
-    public get blob(): Promise<Blob> {
-        return Promise.reject("Not implemented for Mic input");
     }
 
     public turnOn(): Promise<void> {

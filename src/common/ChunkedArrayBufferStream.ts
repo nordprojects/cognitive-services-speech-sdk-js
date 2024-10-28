@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-import { IStreamChunk, Stream } from "./Exports";
+import { IStreamChunk, Stream } from "./Exports.js";
 
 export class ChunkedArrayBufferStream extends Stream<ArrayBuffer> {
     private privTargetChunkSize: number;
@@ -11,7 +11,7 @@ export class ChunkedArrayBufferStream extends Stream<ArrayBuffer> {
 
     public constructor(targetChunkSize: number, streamId?: string) {
         super(streamId);
-        this.privTargetChunkSize = targetChunkSize;
+        this.privTargetChunkSize = Math.round(targetChunkSize);
         this.privNextBufferReadyBytes = 0;
     }
 

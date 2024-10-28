@@ -6,7 +6,7 @@ import {
     ConversationExpirationEventArgs,
     ConversationTranslationCanceledEventArgs,
     SessionEventArgs,
-    } from "../../sdk/Exports";
+    } from "../../sdk/Exports.js";
 // import { ConversationClient } from "./ConversationConnection";
 import {
     ConversationReceivedTranslationEventArgs,
@@ -14,7 +14,7 @@ import {
     MuteAllEventArgs,
     ParticipantAttributeEventArgs,
     ParticipantEventArgs,
-    ParticipantsListEventArgs } from "./ConversationTranslatorEventArgs";
+    ParticipantsListEventArgs } from "./ConversationTranslatorEventArgs.js";
 
 /**
  * Internal conversation data
@@ -48,6 +48,8 @@ export interface IInternalConversation {
     correlationId: string;
     // extracted from the headers
     requestId: string;
+    // set programmatically
+    isHost: boolean;
 }
 
 /**

@@ -5,7 +5,7 @@ import {
     connectivity,
     ISpeechConfigAudioDevice,
     type,
-} from "../common.speech/Exports";
+} from "../common.speech/Exports.js";
 import {
     AudioSourceErrorEvent,
     AudioSourceEvent,
@@ -26,8 +26,8 @@ import {
     IStreamChunk,
     IStringDictionary,
     Stream,
-} from "../common/Exports";
-import { AudioStreamFormat, AudioStreamFormatImpl } from "../sdk/Audio/AudioStreamFormat";
+} from "../common/Exports.js";
+import { AudioStreamFormat, AudioStreamFormatImpl } from "../sdk/Audio/AudioStreamFormat.js";
 
 export class FileAudioSource implements IAudioSource {
 
@@ -61,10 +61,6 @@ export class FileAudioSource implements IAudioSource {
 
     public get format(): Promise<AudioStreamFormatImpl> {
         return this.privAudioFormatPromise;
-    }
-
-    public get blob(): Promise<Blob | Buffer> {
-        return Promise.resolve(this.privSource);
     }
 
     public turnOn(): Promise<void> {
@@ -150,7 +146,7 @@ export class FileAudioSource implements IAudioSource {
 
     private readHeader(): Promise<AudioStreamFormatImpl> {
         // Read the wave header.
-        const maxHeaderSize: number = 512;
+        const maxHeaderSize: number = 4296;
         const header: Blob | Buffer = this.privSource.slice(0, maxHeaderSize);
 
         const headerResult: Deferred<AudioStreamFormatImpl> = new Deferred<AudioStreamFormatImpl>();
